@@ -16,75 +16,132 @@ export class RoomController {
             console.log(error)
             return response.status(500).json({ message: "Ocorreu um erro inesperado" })
         }
- }
+    }
 
- async createVideo(request: Request, response: Response) {
-    const { title, url} = request.body
-    const { idRoom } = request.params
+    async createVideo(request: Request, response: Response) {
+        const { title, url} = request.body
+        const { idRoom } = request.params
 
-    try {
-        const room = await roomRepository.findOneBy({ id: Number(idRoom)})
-        if(!room) return response.status(404).json({ message: "Sala não encontrada" })
+        try {
+            const room = await roomRepository.findOneBy({ id: Number(idRoom)})
+            if(!room) return response.status(404).json({ message: "Sala não encontrada" })
 
-        const newVideo = videoRepository.create({
-          title,
-          url,
-          room  
+            const newVideo = videoRepository.create({
+              title,
+              url,
+              room  
+            })
+
+            await videoRepository.save(newVideo)
+            return response.status(201).json(newVideo)
+
+        } catch (error) {
+            console.log(error)
+            return response.status(500).json({ message: "Ocorreu um erro inesperado" })
+        }
+    }
+
+    async roomSubject(request: Request, response: Response) {
+        const { subject_id } = request.body
+        const { idRoom } = request.params
+
+        try {
+            const room = await roomRepository.findOneBy({ id: Number(idRoom) })
+
+            if (!room) {
+                return response.status(404).json({ message: 'Aula não existe' })
+            }
+
+            const subject = await subjectRepository.findOneBy({
+                id: Number(subject_id),
+            })
+
+            if (!subject) {
+                return response.status(404).json({ message: 'Disciplina não existe' })
+            }
+
+            const roomUpdate = {
+                ...room,
+                subjects: [subject],
+            }
+
+            await roomRepository.save(roomUpdate)
+
+            return response.status(204).send()
+        } catch (error) {
+            console.log(error)
+            return response.status(500).json({ message: 'Internal Sever Error' })
+        }
+    }
+
+    async list(request: Request, response: Response) {
+        try {
+            const rooms = await roomRepository.find({relations: {
+                subjects: true,
+                videos: true
+            }
         })
 
-        await videoRepository.save(newVideo)
-        return response.status(201).json(newVideo)
-
-    } catch (error) {
-        console.log(error)
-        return response.status(500).json({ message: "Ocorreu um erro inesperado" })
+            return response.status(200).json(rooms)
+        } catch (error) {
+            console.log(error)
+            return response.status(500).json({ message: 'Internal Sever Error' })
+        }
     }
- }
 
- async roomSubject(request: Request, response: Response) {
-    const { subject_id } = request.body
-    const { idRoom } = request.params
 
-    try {
-        const room = await roomRepository.findOneBy({ id: Number(idRoom) })
-
-        if (!room) {
-            return response.status(404).json({ message: 'Aula não existe' })
+    async deleteRoom(request: Request, response: Response) {
+        const { idRoom } = request.params;
+    
+        try {
+            // Encontre a sala
+            const room = await roomRepository.findOneBy({ id: Number(idRoom) });
+    
+            if (!room) {
+                return response.status(404).json({ message: 'Sala não encontrada' });
+            }
+    
+            // Exclua os vídeos relacionados à sala
+            await videoRepository.delete({ room: room });
+    
+            // Agora você pode excluir a sala
+            await roomRepository.remove(room);
+    
+            return response.status(204).send();
+        } catch (error) {
+            console.log(error);
+            return response.status(500).json({ message: 'Ocorreu um erro inesperado' });
         }
-
-        const subject = await subjectRepository.findOneBy({
-            id: Number(subject_id),
-        })
-
-        if (!subject) {
-            return response.status(404).json({ message: 'Disciplina não existe' })
-        }
-
-        const roomUpdate = {
-            ...room,
-            subjects: [subject],
-        }
-
-        await roomRepository.save(roomUpdate)
-
-        return response.status(204).send()
-    } catch (error) {
-        console.log(error)
-        return response.status(500).json({ message: 'Internal Sever Error' })
     }
- }
- async list(request: Request, response: Response) {
-    try {
-        const rooms = await roomRepository.find({relations: {
-            subjects: true,
-            videos: true
-        }
-    })
 
-        return response.status(200).json(rooms)
-    } catch (error) {
-        console.log(error)
-        return response.status(500).json({ message: 'Internal Sever Error' })
+    async updateRoom(request: Request, response: Response){
+        const { idRoom } = request.params;
+        const { name, description } = request.body;
+    
+        try {
+            // Encontre a sala
+            const room = await roomRepository.findOneBy({ id: Number(idRoom) });
+    
+            if (!room) {
+                return response.status(404).json({ message: 'Sala não encontrada' });
+            }
+    
+            // Atualize os dados da sala
+            const roomUpdate = {
+                ...room,
+                name: name || room.name,
+                description: description || room.description,
+            };
+    
+            await roomRepository.save(roomUpdate);
+    
+            return response.status(200).json(roomUpdate);
+        } catch (error) {
+            console.log(error);
+            return response.status(500).json({ message: 'Ocorreu um erro inesperado' });
+        }
     }
- }
+    
+
+
 }
